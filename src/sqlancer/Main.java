@@ -631,6 +631,8 @@ public final class Main {
             if (options.getRandomSeed() == -1) {
                 seed = System.currentTimeMillis() + i;
             } else {
+                // TODO:P: Seed is always random as number of tries "i" is added
+                // Q? Does this stay the same if I do 100 tries with same seed?
                 seed = options.getRandomSeed() + i;
             }
             execService.execute(new Runnable() {
