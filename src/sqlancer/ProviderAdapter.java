@@ -289,106 +289,82 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     public void generateAndTestDatabaseWithMutateRandSeed(G globalState) throws Exception {
         // NOTE: Init things here
         calculateWeightedScore("");
+        int numIterations = 1;
+        int numQueriesPerIter = 2;
 
-        for (int i = 0; i < 10; i++) {
-            System.out.println(globalState.getRandomly().getInteger());
+        try {
+            generateDatabase(globalState);
+            checkViewsAreValid(globalState);
+            globalState.getManager().incrementCreateDatabase();
+
+            Long executedQueryCount = 0L;
+            while (executedQueryCount < globalState.getOptions().getNrQueries()) {
+                // init global stuff
+                TestOracle<G> oracle = getTestOracle(globalState);
+
+                try (OracleRunReproductionState seedRand = globalState.getState().createLocalState()) {
+                    assert seedRand != null;
+
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    long maxScore = 0;
+                    ArrayList<Long> backup = new ArrayList<>();
+
+                    for (int i = 0; i < numIterations; i++) {
+                        try (OracleRunReproductionState seedIter = globalState.getState().createLocalState()) {
+                            assert seedIter != null;
+
+                            backup = globalState.getRandomly().backup();
+                            String allQueries = "";
+                            for (int j = 0; j < numQueriesPerIter; j++) {
+                                try {
+                                    oracle.check();
+                                    allQueries += oracle.getLastQueryString();
+
+                                } catch (IgnoreMeException e) {
+
+                                }
+                            }
+
+                            System.err.println(allQueries);
+
+                            long currScore = calculateWeightedScore(allQueries);
+                            if (currScore > maxScore) {
+                                maxScore = currScore;
+                                // TODO: record id/reproducable value of which seedRand got max
+                            }
+
+                            seedIter.executedWithoutError();
+                        }
+                    }
+
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    // apply max Randomly counter
+                    globalState.getRandomly().restoreBackup(backup);
+                    String unusedVal = "";
+                    for (int j = 0; j < numQueriesPerIter; j++) {
+                        try {
+                            oracle.check();
+                            unusedVal = oracle.getLastQueryString();
+                            System.err.println(unusedVal);
+
+                            globalState.getManager().incrementSelectQueryCount();
+                            executedQueryCount += 1;
+                        } catch (IgnoreMeException e) {
+
+                        }
+                    }
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    seedRand.executedWithoutError();
+
+                    System.exit(0);
+                }
+            }
+        } finally {
+            globalState.getConnection().close();
         }
-
-        System.out.println("pres done");
-        ArrayList<Long> l = globalState.getRandomly().backup();
-        for (int i = 0; i < 10; i++) {
-            System.out.println(globalState.getRandomly().getInteger());
-        }
-
-        System.out.println("first run done");
-        globalState.getRandomly().restoreBackup(l);
-        for (int i = 0; i < 10; i++) {
-            System.out.println(globalState.getRandomly().getInteger());
-        }
-
-        System.out.println("second run done");
-        globalState.getRandomly().restoreBackup(l);
-        for (int i = 0; i < 10; i++) {
-            System.out.println(globalState.getRandomly().getInteger());
-        }
-
-        System.exit(1);
-
-        // int numIterations = 1;
-        // int numQueriesPerIter = 10;
-        //
-        // try {
-        // generateDatabase(globalState);
-        // checkViewsAreValid(globalState);
-        // globalState.getManager().incrementCreateDatabase();
-        //
-        // Long executedQueryCount = 0L;
-        // while (executedQueryCount < globalState.getOptions().getNrQueries()) {
-        // // init global stuff
-        // TestOracle<G> oracle = getTestOracle(globalState);
-        //
-        // try (OracleRunReproductionState seedRand =
-        // globalState.getState().createLocalState()) {
-        // assert seedRand != null;
-        //
-        // System.err.println(globalState.getState().getStatements().size());
-        //
-        // long maxScore = 0;
-        // for (int i = 0; i < numIterations; i++) {
-        // try (OracleRunReproductionState seedIter =
-        // globalState.getState().createLocalState()) {
-        // assert seedIter != null;
-        //
-        // String allQueries = "";
-        // for (int j = 0; j < numQueriesPerIter; j++) {
-        // try {
-        // oracle.check();
-        // allQueries += oracle.getLastQueryString();
-        //
-        // } catch (IgnoreMeException e) {
-        //
-        // }
-        // }
-        //
-        // System.err.println(allQueries);
-        //
-        // long currScore = calculateWeightedScore(allQueries);
-        // if (currScore > maxScore) {
-        // maxScore = currScore;
-        // // TODO: record id/reproducable value of which seedRand got max
-        // }
-        //
-        // seedIter.executedWithoutError();
-        // }
-        // }
-        //
-        // System.err.println(globalState.getState().getStatements().size());
-        //
-        // // apply max Randomly counter
-        // // TODO: actually get counter
-        // String unusedVal = "";
-        // for (int j = 0; j < numQueriesPerIter; j++) {
-        // try {
-        // oracle.check();
-        // unusedVal = oracle.getLastQueryString();
-        // System.err.println(unusedVal);
-        //
-        // globalState.getManager().incrementSelectQueryCount();
-        // executedQueryCount += 1;
-        // } catch (IgnoreMeException e) {
-        //
-        // }
-        // }
-        // System.err.println(globalState.getState().getStatements().size());
-        //
-        // seedRand.executedWithoutError();
-        //
-        // System.exit(0);
-        // }
-        // }
-        // } finally {
-        // globalState.getConnection().close();
-        // }
 
     }
 
