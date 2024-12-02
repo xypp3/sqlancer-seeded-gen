@@ -66,6 +66,9 @@ public class MainOptions {
     @Parameter(names = "--qpg-selection-probability", description = "The probability (0-1) of the random selection of mutators. A higher value (>0.5) favors exploration over exploitation. (requires --qpg-enable)")
     private static double qpgProbability = 0.7;
 
+    @Parameter(names = "--mrs-enable", description = "Enable the experimental feature Mutate Random Seed", arity = 1)
+    private boolean enableMRS;
+
     @Parameter(names = "--username", description = "The user name used to log into the DBMS")
     private String userName = "sqlancer"; // NOPMD
 
@@ -206,6 +209,10 @@ public class MainOptions {
 
     public double getQPGProbability() {
         return qpgProbability;
+    }
+
+    public boolean enableMRS() {
+        return enableMRS;
     }
 
     public int getNrQueries() {

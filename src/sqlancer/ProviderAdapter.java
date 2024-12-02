@@ -26,6 +26,9 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     int currentSelectCounts;
     int currentMutationOperator = -1;
 
+    // Variables for Rand Seed Mutation
+    // TODO: Map iterations to SCORE
+
     protected ProviderAdapter(Class<G> globalClass, Class<O> optionClass) {
         this.globalClass = globalClass;
         this.optionClass = optionClass;
@@ -141,7 +144,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
                         }
                         localState.executedWithoutError();
                     }
-                    // exit loop to mutate tables if no new query plans have been found after a while
+                    // exit loop to mutate tables if no new query plans have been found after a
+                    // while
                     if (numOfNoNewQueryPlans > globalState.getOptions().getQPGMaxMutationInterval()) {
                         mutateTables(globalState);
                         break;
@@ -182,13 +186,15 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
             currentMutationOperator = selectedActionIndex;
         }
 
-        // Clear the variables for storing the rewards of the action on a set of newly generated queries
+        // Clear the variables for storing the rewards of the action on a set of newly
+        // generated queries
         currentSelectRewards = 0;
         currentSelectCounts = 0;
         return true;
     }
 
-    // QPG: add a query plan to the query plan pool and return true if the query plan is new
+    // QPG: add a query plan to the query plan pool and return true if the query
+    // plan is new
     private boolean addQueryPlan(String selectStr, G globalState) throws Exception {
         String queryPlan = getQueryPlan(selectStr, globalState);
 
@@ -206,7 +212,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
         }
     }
 
-    // Obtain the reward of the current action based on the queries associated with the query plan pool
+    // Obtain the reward of the current action based on the queries associated with
+    // the query plan pool
     private int checkQueryPlan(G globalState) throws Exception {
         int newQueryPlanFound = 0;
         HashMap<String, String> modifiedQueryPlan = new HashMap<>();
@@ -235,12 +242,14 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
                 * globalState.getOptions().getQPGk();
     }
 
-    // QPG: initialize the weighted average reward of all mutation operators (required implementation in specific DBMS)
+    // QPG: initialize the weighted average reward of all mutation operators
+    // (required implementation in specific DBMS)
     protected double[] initializeWeightedAverageReward() {
         throw new UnsupportedOperationException();
     }
 
-    // QPG: obtain the query plan of a query (required implementation in specific DBMS)
+    // QPG: obtain the query plan of a query (required implementation in specific
+    // DBMS)
     protected String getQueryPlan(String selectStr, G globalState) throws Exception {
         throw new UnsupportedOperationException();
     }
@@ -250,9 +259,63 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
         throw new UnsupportedOperationException();
     }
 
-    // QPG: add rows to all tables (required implementation in specific DBMS when enabling PQS oracle for QPG)
+    // QPG: add rows to all tables (required implementation in specific DBMS when
+    // enabling PQS oracle for QPG)
     protected boolean addRowsToAllTables(G globalState) throws Exception {
         throw new UnsupportedOperationException();
     }
 
+    // MRS: entry function
+    @Override
+    public void generateAndTestDatabaseWithMutateRandSeed(G globalState) throws Exception {
+        // NOTE: Init things here
+        System.err.println("randseeding");
+        System.exit(0);
+
+        // if (weightedAverageReward == null) {
+        // weightedAverageReward = initializeWeightedAverageReward(); // Same length as
+        // the list of mutators
+        // }
+        // try {
+        // generateDatabase(globalState);
+        // checkViewsAreValid(globalState);
+        // globalState.getManager().incrementCreateDatabase();
+        //
+        // Long executedQueryCount = 0L;
+        // while (executedQueryCount < globalState.getOptions().getNrQueries()) {
+        // int numOfNoNewQueryPlans = 0;
+        // TestOracle<G> oracle = getTestOracle(globalState);
+        // while (executedQueryCount < globalState.getOptions().getNrQueries()) {
+        // try (OracleRunReproductionState localState =
+        // globalState.getState().createLocalState()) {
+        // assert localState != null;
+        // try {
+        // oracle.check();
+        // String query = oracle.getLastQueryString();
+        // executedQueryCount += 1;
+        // if (addQueryPlan(query, globalState)) {
+        // numOfNoNewQueryPlans = 0;
+        // } else {
+        // numOfNoNewQueryPlans++;
+        // }
+        // globalState.getManager().incrementSelectQueryCount();
+        // } catch (IgnoreMeException e) {
+        //
+        // }
+        // localState.executedWithoutError();
+        // }
+        // // exit loop to mutate tables if no new query plans have been found after a
+        // // while
+        // if (numOfNoNewQueryPlans >
+        // globalState.getOptions().getQPGMaxMutationInterval()) {
+        // mutateTables(globalState);
+        // break;
+        // }
+        // }
+        // }
+        // } finally {
+        // globalState.getConnection().close();
+        // }
+
+    }
 }

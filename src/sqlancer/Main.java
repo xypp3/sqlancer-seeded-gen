@@ -450,6 +450,8 @@ public final class Main {
                 Reproducer<G> reproducer = null;
                 if (options.enableQPG()) {
                     provider.generateAndTestDatabaseWithQueryPlanGuidance(state);
+                } else if (options.enableMRS()) {
+                    provider.generateAndTestDatabaseWithMutateRandSeed(state);
                 } else {
                     reproducer = provider.generateAndTestDatabase(state);
                 }

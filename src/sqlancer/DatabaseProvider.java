@@ -19,15 +19,16 @@ public interface DatabaseProvider<G extends GlobalState<O, ?, C>, O extends DBMS
     Class<O> getOptionClass();
 
     /**
-     * Generates a single database and executes a test oracle a given number of times.
+     * Generates a single database and executes a test oracle a given number of
+     * times.
      *
      * @param globalState
-     *            the state created and is valid for this method call.
+     *                    the state created and is valid for this method call.
      *
      * @return Reproducer if a bug is found and a reproducer is available.
      *
      * @throws Exception
-     *             if creating the database fails.
+     *                   if creating the database fails.
      *
      */
     Reproducer<G> generateAndTestDatabase(G globalState) throws Exception;
@@ -36,18 +37,34 @@ public interface DatabaseProvider<G extends GlobalState<O, ?, C>, O extends DBMS
      * The experimental feature: Query Plan Guidance.
      *
      * @param globalState
-     *            the state created and is valid for this method call.
+     *                    the state created and is valid for this method call.
      *
      * @throws Exception
-     *             if testing fails.
+     *                   if testing fails.
      *
      */
     void generateAndTestDatabaseWithQueryPlanGuidance(G globalState) throws Exception;
 
+    /**
+     * Generates a single database and executes a test oracle a given number of
+     * times.
+     *
+     * @param globalState
+     *                    the state created and is valid for this method call.
+     *
+     * @return Reproducer if a bug is found and a reproducer is available.
+     *
+     * @throws Exception
+     *                   if creating the database fails.
+     *
+     */
+    void generateAndTestDatabaseWithMutateRandSeed(G globalState) throws Exception;
+
     C createDatabase(G globalState) throws Exception;
 
     /**
-     * The DBMS name is used to name the log directory and command to test the respective DBMS.
+     * The DBMS name is used to name the log directory and command to test the
+     * respective DBMS.
      *
      * @return the DBMS' name
      */
