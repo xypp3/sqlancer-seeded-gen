@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import sqlancer.StateToReproduce.OracleRunReproductionState;
@@ -269,7 +270,9 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     @Override
     public void generateAndTestDatabaseWithMutateRandSeed(G globalState) throws Exception {
         // NOTE: Init things here
-        System.err.println("randseeding");
+
+        String sqlStr = "SELECT, JOIN,\nUPDATE, WHERE, CREATE, INSERT, DELETE, OR,\n AND, DROP, JOIN";
+        System.err.println(calculateWeightedScore(sqlStr));
         System.exit(0);
 
         // if (weightedAverageReward == null) {
@@ -317,5 +320,32 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
         // globalState.getConnection().close();
         // }
 
+    }
+
+    private long calculateWeightedScore(String sqlStr) {
+        Pattern join = Pattern.compile("JOIN");
+        Pattern create = Pattern.compile("CREATE");
+        Pattern update = Pattern.compile("UPDATE");
+        Pattern select = Pattern.compile("SELECT");
+        Pattern where = Pattern.compile("WHERE");
+        Pattern insert = Pattern.compile("INSERT");
+        Pattern delete = Pattern.compile("DELETE");
+        Pattern and = Pattern.compile("AND");
+        Pattern or = Pattern.compile("OR");
+        Pattern drop = Pattern.compile("DROP");
+
+        long weightedSum = 0;
+        weightedSum += 1 * join.matcher(sqlStr).results().count();
+        weightedSum += 1 * create.matcher(sqlStr).results().count();
+        weightedSum += 1 * update.matcher(sqlStr).results().count();
+        weightedSum += 1 * select.matcher(sqlStr).results().count();
+        weightedSum += 1 * where.matcher(sqlStr).results().count();
+        weightedSum += 1 * insert.matcher(sqlStr).results().count();
+        weightedSum += 1 * delete.matcher(sqlStr).results().count();
+        weightedSum += 1 * and.matcher(sqlStr).results().count();
+        weightedSum += 1 * or.matcher(sqlStr).results().count();
+        weightedSum += 1 * drop.matcher(sqlStr).results().count();
+
+        return weightedSum;
     }
 }
