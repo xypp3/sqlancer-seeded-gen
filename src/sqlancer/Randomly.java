@@ -530,6 +530,7 @@ public final class Randomly {
 
         SEED.set(new Random().nextLong());
         THREAD_RANDOM.set(new Random(SEED.get()));
+        COUNTER.set(-1);
     }
 
     public Randomly(long seed) {
@@ -538,6 +539,7 @@ public final class Randomly {
 
         SEED.set(seed);
         THREAD_RANDOM.set(new Random(SEED.get()));
+        COUNTER.set(-1);
     }
 
     public static double getUncachedDouble() {
@@ -589,6 +591,34 @@ public final class Randomly {
         useCaching = options.useConstantCaching();
         cacheSize = options.getConstantCacheSize();
         // TODO:P: record randomly options
+    }
+
+    public ArrayList<Long> backup() {
+        ArrayList<Long> ret = new ArrayList<Long>();
+
+        ret.add(SEED.get());
+        Integer val = COUNTER.get();
+        if (val == null) {
+            ret.add(-1L);
+        } else {
+            ret.add(Long.valueOf(COUNTER.get()));
+        }
+
+        return ret;
+    }
+
+    public void restoreBackup(ArrayList<Long> data) {
+        long seed = data.get(0);
+        int counter = Math.toIntExact(data.get(1));
+
+        THREAD_RANDOM.set(new Random(seed));
+        SEED.set(seed);
+        COUNTER.set(-1);
+
+        while (COUNTER.get() < counter) {
+            getInteger();
+        }
+
     }
 
 }
