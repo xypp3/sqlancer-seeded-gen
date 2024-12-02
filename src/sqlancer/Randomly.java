@@ -213,11 +213,11 @@ public final class Randomly {
         // TODO:P: check if this is ThreadSafe
         COUNTER.set(COUNTER.get() + 1);
 
-        if (COUNTER.get() >= 10000) {
-            // System.out.println("Done randoming");
-            System.out.println("seed: " + SEED.get().toString());
-            System.exit(0);
-        }
+        // if (COUNTER.get() >= 10000) {
+        // // System.out.println("Done randoming");
+        // System.out.println("seed: " + SEED.get().toString());
+        // System.exit(0);
+        // }
 
         return THREAD_RANDOM;
     }
