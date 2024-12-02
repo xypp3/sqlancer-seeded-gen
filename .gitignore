@@ -12,3 +12,8 @@ SQLancer.iml
 dependency-reduced-pom.xml
 database0.db
 databaseconnectiontest.db
+
+# My ignr
+.factorypath
+.settings/org.eclipse.jdt.apt.core.prefs
+.settings/org.eclipse.jdt.core.prefs

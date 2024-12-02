@@ -15,17 +15,27 @@ public final class Randomly {
     private static int maxStringLength = 10;
     private static boolean useCaching = true;
     private static int cacheSize = 100;
+    // TODO:P: Add useReplay option
 
     private final List<Long> cachedLongs = new ArrayList<>();
     private final List<Integer> cachedIntegers = new ArrayList<>();
     private final List<String> cachedStrings = new ArrayList<>();
     private final List<Double> cachedDoubles = new ArrayList<>();
     private final List<byte[]> cachedBytes = new ArrayList<>();
+    // TODO:P: What is a supplier?
+    // something provided from SQLite pragma
     private Supplier<String> provider;
 
     private static final ThreadLocal<Random> THREAD_RANDOM = new ThreadLocal<>();
-    private long seed;
+    private static final ThreadLocal<Integer> COUNTER = new ThreadLocal<>();
+    private static final ThreadLocal<Long> SEED = new ThreadLocal<>();
 
+    // NOTE:P: Checkpoint struct
+    // - seed, Random()
+    // - counter --- (number of times seed has run)
+    // - isCache --- if caching then diff code paths are taken
+
+    // TODO:P: does adding happenen every time a get happens?
     private void addToCache(long val) {
         if (useCaching && cachedLongs.size() < cacheSize && !cachedLongs.contains(val)) {
             cachedLongs.add(val);
@@ -50,6 +60,7 @@ public final class Randomly {
         }
     }
 
+    // TODO:P: Do I need to add coordinate tracking to caches as well
     private Long getFromLongCache() {
         if (!useCaching || cachedLongs.isEmpty()) {
             return null;
@@ -191,13 +202,29 @@ public final class Randomly {
     private static ThreadLocal<Random> getThreadRandom() {
         if (THREAD_RANDOM.get() == null) {
             // a static method has been called, before Randomly was instantiated
+            // TODO:P: Where is this usecase used???
+            // System.out.println("\n\nstatic call of Randomly.getThreadRandom()\n\n");
             THREAD_RANDOM.set(new Random());
         }
+        if (COUNTER.get() == null) {
+            COUNTER.set(-1);
+        }
+
+        // TODO:P: check if this is ThreadSafe
+        COUNTER.set(COUNTER.get() + 1);
+
+        // if (COUNTER.get() >= 10000) {
+        // // System.out.println("Done randoming");
+        // System.out.println("seed: " + SEED.get().toString());
+        // System.exit(0);
+        // }
+
         return THREAD_RANDOM;
     }
 
     public long getInteger() {
         if (smallBiasProbability()) {
+            // TODO:P: see if this value also needs to be captured
             return Randomly.fromOptions(-1L, Long.MAX_VALUE, Long.MIN_VALUE, 1L, 0L);
         } else {
             if (cacheProbability()) {
@@ -498,12 +525,21 @@ public final class Randomly {
     }
 
     public Randomly() {
-        THREAD_RANDOM.set(new Random());
+        // System.out.println("Times Randomly pre init is statically called: " +
+        // counter.get());
+
+        SEED.set(new Random().nextLong());
+        THREAD_RANDOM.set(new Random(SEED.get()));
+        COUNTER.set(-1);
     }
 
     public Randomly(long seed) {
-        this.seed = seed;
-        THREAD_RANDOM.set(new Random(seed));
+        // System.out.println("Times Randomly pre init is statically called: " +
+        // counter.get());
+
+        SEED.set(seed);
+        THREAD_RANDOM.set(new Random(SEED.get()));
+        COUNTER.set(-1);
     }
 
     public static double getUncachedDouble() {
@@ -546,7 +582,7 @@ public final class Randomly {
     }
 
     public long getSeed() {
-        return seed;
+        return SEED.get();
     }
 
     public static void initialize(MainOptions options) {
@@ -554,6 +590,35 @@ public final class Randomly {
         maxStringLength = options.getMaxStringConstantLength();
         useCaching = options.useConstantCaching();
         cacheSize = options.getConstantCacheSize();
+        // TODO:P: record randomly options
+    }
+
+    public ArrayList<Long> backup() {
+        ArrayList<Long> ret = new ArrayList<Long>();
+
+        ret.add(SEED.get());
+        Integer val = COUNTER.get();
+        if (val == null) {
+            ret.add(-1L);
+        } else {
+            ret.add(Long.valueOf(COUNTER.get()));
+        }
+
+        return ret;
+    }
+
+    public void restoreBackup(ArrayList<Long> data) {
+        long seed = data.get(0);
+        int counter = Math.toIntExact(data.get(1));
+
+        THREAD_RANDOM.set(new Random(seed));
+        SEED.set(seed);
+        COUNTER.set(-1);
+
+        while (COUNTER.get() < counter) {
+            getInteger();
+        }
+
     }
 
 }

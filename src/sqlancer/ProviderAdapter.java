@@ -1,10 +1,12 @@
 package sqlancer;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import sqlancer.StateToReproduce.OracleRunReproductionState;
@@ -25,6 +27,19 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     int currentSelectRewards;
     int currentSelectCounts;
     int currentMutationOperator = -1;
+
+    // Variables for Rand Seed Mutation
+    // TODO: Map iterations to SCORE
+    private final Pattern join = Pattern.compile("JOIN");
+    private final Pattern create = Pattern.compile("CREATE");
+    private final Pattern update = Pattern.compile("UPDATE");
+    private final Pattern select = Pattern.compile("SELECT");
+    private final Pattern where = Pattern.compile("WHERE");
+    private final Pattern insert = Pattern.compile("INSERT");
+    private final Pattern delete = Pattern.compile("DELETE");
+    private final Pattern and = Pattern.compile("AND");
+    private final Pattern or = Pattern.compile("OR");
+    private final Pattern drop = Pattern.compile("DROP");
 
     protected ProviderAdapter(Class<G> globalClass, Class<O> optionClass) {
         this.globalClass = globalClass;
@@ -141,7 +156,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
                         }
                         localState.executedWithoutError();
                     }
-                    // exit loop to mutate tables if no new query plans have been found after a while
+                    // exit loop to mutate tables if no new query plans have been found after a
+                    // while
                     if (numOfNoNewQueryPlans > globalState.getOptions().getQPGMaxMutationInterval()) {
                         mutateTables(globalState);
                         break;
@@ -182,13 +198,15 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
             currentMutationOperator = selectedActionIndex;
         }
 
-        // Clear the variables for storing the rewards of the action on a set of newly generated queries
+        // Clear the variables for storing the rewards of the action on a set of newly
+        // generated queries
         currentSelectRewards = 0;
         currentSelectCounts = 0;
         return true;
     }
 
-    // QPG: add a query plan to the query plan pool and return true if the query plan is new
+    // QPG: add a query plan to the query plan pool and return true if the query
+    // plan is new
     private boolean addQueryPlan(String selectStr, G globalState) throws Exception {
         String queryPlan = getQueryPlan(selectStr, globalState);
 
@@ -206,7 +224,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
         }
     }
 
-    // Obtain the reward of the current action based on the queries associated with the query plan pool
+    // Obtain the reward of the current action based on the queries associated with
+    // the query plan pool
     private int checkQueryPlan(G globalState) throws Exception {
         int newQueryPlanFound = 0;
         HashMap<String, String> modifiedQueryPlan = new HashMap<>();
@@ -235,12 +254,14 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
                 * globalState.getOptions().getQPGk();
     }
 
-    // QPG: initialize the weighted average reward of all mutation operators (required implementation in specific DBMS)
+    // QPG: initialize the weighted average reward of all mutation operators
+    // (required implementation in specific DBMS)
     protected double[] initializeWeightedAverageReward() {
         throw new UnsupportedOperationException();
     }
 
-    // QPG: obtain the query plan of a query (required implementation in specific DBMS)
+    // QPG: obtain the query plan of a query (required implementation in specific
+    // DBMS)
     protected String getQueryPlan(String selectStr, G globalState) throws Exception {
         throw new UnsupportedOperationException();
     }
@@ -250,9 +271,116 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
         throw new UnsupportedOperationException();
     }
 
-    // QPG: add rows to all tables (required implementation in specific DBMS when enabling PQS oracle for QPG)
+    // QPG: add rows to all tables (required implementation in specific DBMS when
+    // enabling PQS oracle for QPG)
     protected boolean addRowsToAllTables(G globalState) throws Exception {
         throw new UnsupportedOperationException();
     }
 
+    // MRS: entry function
+    // TODO: List
+    // - clone Randomly values and save before loop and restore after
+    // ---- this is now custom
+    // ---- how I can copy by getting seed and counter
+    // ---- how do I restore the objects given they are inside ThreadSafe
+    // - clone DB state and iterate a few lines? the max lines is a power of 10?
+    // - Do 100 iterations for now, compare timing to QPG
+    @Override
+    public void generateAndTestDatabaseWithMutateRandSeed(G globalState) throws Exception {
+        // NOTE: Init things here
+        calculateWeightedScore("");
+        int numIterations = 1;
+        int numQueriesPerIter = 2;
+
+        try {
+            generateDatabase(globalState);
+            checkViewsAreValid(globalState);
+            globalState.getManager().incrementCreateDatabase();
+
+            Long executedQueryCount = 0L;
+            while (executedQueryCount < globalState.getOptions().getNrQueries()) {
+                // init global stuff
+                TestOracle<G> oracle = getTestOracle(globalState);
+
+                try (OracleRunReproductionState seedRand = globalState.getState().createLocalState()) {
+                    assert seedRand != null;
+
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    long maxScore = 0;
+                    ArrayList<Long> backup = new ArrayList<>();
+
+                    for (int i = 0; i < numIterations; i++) {
+                        try (OracleRunReproductionState seedIter = globalState.getState().createLocalState()) {
+                            assert seedIter != null;
+
+                            backup = globalState.getRandomly().backup();
+                            String allQueries = "";
+                            for (int j = 0; j < numQueriesPerIter; j++) {
+                                try {
+                                    oracle.check();
+                                    allQueries += oracle.getLastQueryString();
+
+                                } catch (IgnoreMeException e) {
+
+                                }
+                            }
+
+                            System.err.println(allQueries);
+
+                            long currScore = calculateWeightedScore(allQueries);
+                            if (currScore > maxScore) {
+                                maxScore = currScore;
+                                // TODO: record id/reproducable value of which seedRand got max
+                            }
+
+                            seedIter.executedWithoutError();
+                        }
+                    }
+
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    // apply max Randomly counter
+                    globalState.getRandomly().restoreBackup(backup);
+                    String unusedVal = "";
+                    for (int j = 0; j < numQueriesPerIter; j++) {
+                        try {
+                            oracle.check();
+                            unusedVal = oracle.getLastQueryString();
+                            System.err.println(unusedVal);
+
+                            globalState.getManager().incrementSelectQueryCount();
+                            executedQueryCount += 1;
+                        } catch (IgnoreMeException e) {
+
+                        }
+                    }
+                    System.err.println(globalState.getState().getStatements().size());
+
+                    seedRand.executedWithoutError();
+
+                    System.exit(0);
+                }
+            }
+        } finally {
+            globalState.getConnection().close();
+        }
+
+    }
+
+    private long calculateWeightedScore(String sqlStr) {
+        long weightedSum = 0;
+        weightedSum += 1 * join.matcher(sqlStr).results().count();
+        weightedSum += 1 * create.matcher(sqlStr).results().count();
+        weightedSum += 1 * update.matcher(sqlStr).results().count();
+        weightedSum += 1 * select.matcher(sqlStr).results().count();
+        weightedSum += 1 * where.matcher(sqlStr).results().count();
+        weightedSum += 1 * insert.matcher(sqlStr).results().count();
+        weightedSum += 1 * delete.matcher(sqlStr).results().count();
+        weightedSum += 1 * and.matcher(sqlStr).results().count();
+        weightedSum += 1 * or.matcher(sqlStr).results().count();
+        weightedSum += 1 * drop.matcher(sqlStr).results().count();
+
+        return weightedSum;
+    }
 }
