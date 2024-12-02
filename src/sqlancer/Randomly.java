@@ -27,8 +27,9 @@ public final class Randomly {
     private Supplier<String> provider;
 
     private static final ThreadLocal<Random> THREAD_RANDOM = new ThreadLocal<>();
-    private static ThreadLocal<Integer> counter = new ThreadLocal<>();
-    private long seed;
+    private static final ThreadLocal<Integer> COUNTER = new ThreadLocal<>();
+    private static final ThreadLocal<Long> SEED = new ThreadLocal<>();
+
     // NOTE:P: Checkpoint struct
     // - seed, Random()
     // - counter --- (number of times seed has run)
@@ -202,18 +203,19 @@ public final class Randomly {
         if (THREAD_RANDOM.get() == null) {
             // a static method has been called, before Randomly was instantiated
             // TODO:P: Where is this usecase used???
-            System.out.println("\n\nstatic call of Randomly.getThreadRandom()\n\n");
+            // System.out.println("\n\nstatic call of Randomly.getThreadRandom()\n\n");
             THREAD_RANDOM.set(new Random());
         }
-        if (counter.get() == null) {
-            counter.set(-1);
+        if (COUNTER.get() == null) {
+            COUNTER.set(-1);
         }
 
         // TODO:P: check if this is ThreadSafe
-        counter.set(counter.get() + 1);
+        COUNTER.set(COUNTER.get() + 1);
 
-        if (counter.get() >= 900) {
-            System.out.println("Done randoming");
+        if (COUNTER.get() >= 10000) {
+            // System.out.println("Done randoming");
+            System.out.println("seed: " + SEED.get().toString());
             System.exit(0);
         }
 
@@ -523,17 +525,19 @@ public final class Randomly {
     }
 
     public Randomly() {
-        System.out.println("Times Randomly pre init is statically called: " + counter.get());
+        // System.out.println("Times Randomly pre init is statically called: " +
+        // counter.get());
 
-        this.seed = new Random().nextLong();
-        THREAD_RANDOM.set(new Random(this.seed));
+        SEED.set(new Random().nextLong());
+        THREAD_RANDOM.set(new Random(SEED.get()));
     }
 
     public Randomly(long seed) {
-        System.out.println("Times Randomly pre init is statically called: " + counter.get());
+        // System.out.println("Times Randomly pre init is statically called: " +
+        // counter.get());
 
-        this.seed = seed;
-        THREAD_RANDOM.set(new Random(seed));
+        SEED.set(seed);
+        THREAD_RANDOM.set(new Random(SEED.get()));
     }
 
     public static double getUncachedDouble() {
@@ -576,7 +580,7 @@ public final class Randomly {
     }
 
     public long getSeed() {
-        return seed;
+        return SEED.get();
     }
 
     public static void initialize(MainOptions options) {
